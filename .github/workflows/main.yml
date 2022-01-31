@@ -19,7 +19,8 @@ jobs:
           host: ${{ secrets.DIGITAL_OCEAN_HOST }}
           user: ${{ secrets.DIGITAL_OCEAN_USER }}
           pass: ${{ secrets.DIGITAL_OCEAN_PASSWORD }}
-          scp: "build/libs/roof-mates-*-all.jar" => "/var/www/roof-mates"
+          scp: |
+            "build/libs/roof-mates-*-all.jar" => "/var/www/roof-mates"
 
       - uses: cross-the-world/ssh-pipeline@v1.2.0
         with:
