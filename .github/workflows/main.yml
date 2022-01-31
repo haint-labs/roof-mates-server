@@ -1,0 +1,31 @@
+name: roof-mates
+on: push
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-java@v2
+        with:
+          distribution: "zulu"
+          java-version: "17"
+          cache: "gradle"
+
+      - run: ./gradlew shadowJar --no-daemon
+
+      - uses: cross-the-world/scp-pipeline@v1.2.1
+        with:
+          host: ${{ secrets.DIGITAL_OCEAN_HOST }}
+          user: ${{ secrets.DIGITAL_OCEAN_USER }}
+          pass: ${{ secrets.DIGITAL_OCEAN_PASSWORD }}
+          scp: "build/libs/roof-mates-*-all.jar" => "/var/www/roof-mates"
+
+      - uses: cross-the-world/ssh-pipeline@v1.2.0
+        with:
+          host: ${{ secrets.DIGITAL_OCEAN_HOST }}
+          user: ${{ secrets.DIGITAL_OCEAN_USER }}
+          pass: ${{ secrets.DIGITAL_OCEAN_PASSWORD }}
+          script: |
+            docker rm -f roof-mates
+            docker run -d -p 7080:8080 --name=roof-mates --volume=/var/www/roof-mates/roof-mates-0.0.1-all.jar:/var/roof-mates-0.0.1-all.jar openjdk:17-alpine java -jar /var/roof-mates-0.0.1-all.jar
