@@ -18,7 +18,7 @@ curl \
 curl \
     -X POST \
     -H "Content-Type: application/json" \
-    -d '{"type":"owner", "name": "Sara", "surname": "Connor", "phoneNumber": "+3714765757", "device": {"type": "Android", "token": "asdfnkdn56sdfgssdfg"}, "parkingNumber": 45}' \
+    -d '{"type":"owner", "name": "Sara", "surname": "Connor", "phoneNumber": "+3714765757", "device": {"type": "Android", "token": "asdfnkdn56sdfgssdfg"}, "regionId": 1, "parkingNumber": 45}' \
     http://0.0.0.0:8080/users/register
 ```
 

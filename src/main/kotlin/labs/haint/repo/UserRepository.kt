@@ -1,15 +1,16 @@
 package labs.haint.repo
 
 import labs.haint.data.Owner
+import labs.haint.data.Spot
 import labs.haint.data.User
-import kotlin.Error
 
 interface UserRepository {
     suspend fun all(): List<User>
     suspend fun save(user: User)
 }
 
-class InMemoryRepository(
+class InMemoryUserRepository(
+    private val regions: RegionsRepository,
     private val users: MutableList<User> = mutableListOf(),
 ) : UserRepository {
     override suspend fun all(): List<User> = users
@@ -20,9 +21,14 @@ class InMemoryRepository(
         }
 
         if (user is Owner) {
-            users.find { it is Owner && it.parkingNumber == user.parkingNumber }?.let {
-                throw Error("User with same parking number already exists")
-            }
+            requireNotNull(regions.byId(user.regionId)) { "Invalid region id" }
+
+            regions.save(
+                Spot(
+                    number = user.parkingNumber,
+                    regionId = user.regionId
+                )
+            )
         }
 
         users += user

@@ -17,6 +17,7 @@ data class Owner(
     override val surname: String,
     override val phoneNumber: String,
     override val device: Device,
+    val regionId: Long,
     val parkingNumber: UInt,
 ) : User
 
