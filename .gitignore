@@ -1,4 +1,7 @@
 .DS_Store
+.env
+!.env/.gitkeep
 .gradle
 .idea
+.postgres
 build

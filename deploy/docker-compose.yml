@@ -1,0 +1,38 @@
+services:
+
+  database:
+    container_name: rm-database
+    image: postgres:14.1
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATA: "/var/lib/postgresql/data/pgdata"
+    volumes:
+      - "../.postgres:/var/lib/postgresql/data/pgdata"
+    ports:
+      - 5432:5432
+
+  migration:
+    container_name: rm-migration
+    image: flyway/flyway:8.4.4
+    command: >
+      -url=jdbc:postgresql://rm-database:5432/${POSTGRES_DB}
+      -user=${POSTGRES_USER}
+      -password=${POSTGRES_PASSWORD}
+      -connectRetries=10 
+      -connectRetriesInterval=5 
+      migrate
+    depends_on:
+      - rm-database
+    volumes:
+      - "../src/main/resources/db/migrations:/flyway/sql"
+
+  rm-server:
+    container_name: roof-mates
+    image: openjdk:17-alpine
+    volumes:
+      - ../build/libs/roof-mates-0.0.1-all.jar:/var/roof-mates-0.0.1-all.jar
+    ports:
+      - 7080:8080
+    command: ["java", "-jar", "/var/roof-mates-0.0.1-all.jar"]
