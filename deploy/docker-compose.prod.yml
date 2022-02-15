@@ -1,0 +1,13 @@
+services:
+
+  database:
+    volumes:
+      - "/var/www/roof-mates/.postgres:/var/lib/postgresql/data/pgdata"
+
+  migration:
+    volumes:
+      - "/var/www/roof-mates/migrations:/flyway/sql"
+
+  server:
+    volumes:
+      - /var/www/roof-mates/roof-mates-0.0.1-all.jar:/var/roof-mates-0.0.1-all.jar

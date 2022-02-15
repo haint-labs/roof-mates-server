@@ -1,0 +1,15 @@
+services:
+
+  database:
+    volumes:
+      - "../.postgres:/var/lib/postgresql/data/pgdata"
+    ports:
+      - 5432:5432
+
+  migration:
+    volumes:
+      - "../src/main/resources/db/migrations:/flyway/sql"
+
+  server:
+    volumes:
+      - ../build/libs/roof-mates-0.0.1-all.jar:/var/roof-mates-0.0.1-all.jar
