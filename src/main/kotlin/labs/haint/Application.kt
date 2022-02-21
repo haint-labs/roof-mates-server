@@ -6,6 +6,8 @@ import io.ktor.server.application.*
 import io.ktor.server.netty.*
 import io.ktor.server.plugins.*
 import io.ktor.server.response.*
+import io.r2dbc.postgresql.PostgresqlConnectionConfiguration
+import io.r2dbc.postgresql.PostgresqlConnectionFactory
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
@@ -22,6 +24,7 @@ fun main(args: Array<String>) = EngineMain.main(args)
 fun Application.main() {
     val json = Json {
         prettyPrint = true
+        ignoreUnknownKeys = true
         serializersModule = SerializersModule {
             polymorphic(User::class) {
                 subclass(Guest::class, Guest.serializer())
@@ -30,14 +33,28 @@ fun Application.main() {
         }
     }
 
-    val regionsRepo = InMemoryRegionsRepository()
-    val usersRepo = InMemoryUserRepository(regionsRepo)
-
     install(ContentNegotiation) { json(json) }
+
+    val connectionFactory = databaseConnectionFactory()
+
+    val regionsRepo = InMemoryRegionsRepository(connectionFactory)
+    val usersRepo = InMemoryUserRepository(connectionFactory)
+
     handleExceptions()
 
     users(repo = usersRepo)
     regions(repo = regionsRepo)
+}
+
+fun Application.databaseConnectionFactory(): PostgresqlConnectionFactory {
+    val config = PostgresqlConnectionConfiguration.builder()
+        .host("0.0.0.0")
+        .database(System.getenv("POSTGRES_DB"))
+        .username(System.getenv("POSTGRES_USER"))
+        .password(System.getenv("POSTGRES_PASSWORD"))
+        .build()
+
+    return PostgresqlConnectionFactory(config)
 }
 
 fun Application.handleExceptions() {
