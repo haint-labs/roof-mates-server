@@ -1,47 +1,151 @@
 package labs.haint.repo
 
+import io.r2dbc.postgresql.PostgresqlConnectionFactory
+import io.r2dbc.postgresql.api.PostgresqlResult
+import kotlinx.coroutines.reactive.awaitSingle
+import kotlinx.serialization.json.Json
 import labs.haint.data.Region
 import labs.haint.data.Spot
-import labs.haint.dummy.dummyRegions
-import labs.haint.dummy.dummySpots
+import reactor.core.publisher.Mono
 
 interface RegionsRepository {
     suspend fun all(): List<Region>
     suspend fun save(region: Region)
     suspend fun save(spot: Spot)
     suspend fun byId(id: Long): Region?
-    suspend fun spots(regionId: Long): List<Spot>
 }
 
 class InMemoryRegionsRepository(
-    private val regions: MutableList<Region> = dummyRegions,
-    private val spots: MutableList<Spot> = dummySpots,
+    private val factory: PostgresqlConnectionFactory,
 ) : RegionsRepository {
-    private var regionId = dummyRegions.count().toLong()
-    private var spotId = dummySpots.count().toLong()
+    override suspend fun all(): List<Region> {
+        val sql = """
+            select
+                json_build_object(
+                    'id', regions.id,
+                    'address', regions.address,
+                    'spots', json_agg(
+                        json_build_object(
+                            'id', spots.id, 
+                            'regionId', regions.id,
+                            'number', spots.parking_number
+                        )
+                    )
+                ) as result
+            from regions 
+            join spots on regions.id = spots.region_id
+            group by regions.id
+        """.trimIndent()
 
-    override suspend fun all(): List<Region> = regions
-        .map { region -> region.copy(spots = spots.filter { it.regionId == region.id }) }
+        val regions = factory.create()
+            .flatMapMany { connection ->
+                connection.createStatement(sql)
+                    .execute()
+                    .flatMap {
+                        it.map { row ->
+                            Json.decodeFromString(Region.serializer(), row.get("result", String::class.java)!!)
+                        }
+                    }
+            }
+            .collectList()
+            .awaitSingle()
+
+        return regions
+    }
 
     override suspend fun save(region: Region) {
-        regions.find { it.address == region.address }?.let {
-            throw Error("Region with same address already exists")
-        }
+        val sharedConnection = factory.create().share()
 
-        regions += region.copy(id = regionId++)
+        sharedConnection
+            .flatMapMany { connection ->
+                connection.createStatement("select count(*) from regions where address = $1")
+                    .bind("$1", region.address)
+                    .execute()
+                    .flatMap { it.map { row -> row.get(0, Integer::class.java) } }
+                    .map { it > 0 }
+            }
+            .flatMap {
+                if (it == true) {
+                    return@flatMap Mono.error(
+                        Error("Region with same address already exists")
+                    )
+                }
+
+                sharedConnection
+            }
+            .flatMap {
+                it.createStatement("insert into regions(id, address) values (default, $1)")
+                    .bind(0, region.address)
+                    .execute()
+                    .flatMap(PostgresqlResult::getRowsUpdated)
+            }
+            .awaitSingle()
     }
 
     override suspend fun save(spot: Spot) {
-        spots.find { it.number == spot.number }?.let {
-            throw Error("Spot with same number already exists")
-        }
+        val sharedConnection = factory.create().share()
 
-        spots += spot.copy(id = spotId++)
+        sharedConnection
+            .flatMapMany { connection ->
+                connection.createStatement("select count(*) from spots where number = $1")
+                    .bind("$1", spot.number)
+                    .execute()
+                    .flatMap { it.map { row -> row.get(0, Integer::class.java) } }
+                    .map { it > 0 }
+            }
+            .flatMap {
+                if (it == true) {
+                    return@flatMap Mono.error(
+                        Error("Spot with same number already exists")
+                    )
+                }
+
+                sharedConnection
+            }
+            .flatMap {
+                it.createStatement("insert into spots (id, region_id, parking_number) values (default, $1, $2)")
+                    .bind(0, spot.regionId)
+                    .bind(1, spot.number)
+                    .execute()
+                    .flatMap(PostgresqlResult::getRowsUpdated)
+            }
+            .awaitSingle()
     }
 
-    override suspend fun byId(id: Long): Region? = regions.find { it.id == id }
+    override suspend fun byId(id: Long): Region? {
+        val sql = """
+            select
+                json_build_object(
+                    'id', regions.id,
+                    'address', regions.address,
+                    'spots', json_agg(
+                        json_build_object(
+                            'id', spots.id, 
+                            'regionId', regions.id,
+                            'number', spots.parking_number
+                        )
+                    )
+                ) as result
+            from regions 
+            join spots on regions.id = spots.region_id
+            group by regions.id
+            where regions.id = $1
+        """.trimIndent()
 
-    override suspend fun spots(regionId: Long): List<Spot> {
-        return spots.filter { it.regionId == regionId }
+        val regions = factory.create()
+            .flatMapMany { connection ->
+                connection.createStatement(sql)
+                    .bind(0, id)
+                    .execute()
+                    .flatMap {
+                        it.map { row ->
+                            Json.decodeFromString(Region.serializer(), row.get("result", String::class.java)!!)
+                        }
+                    }
+            }
+            .collectList()
+            .awaitSingle()
+
+        return regions.first()
     }
 }

@@ -1,0 +1,1 @@
+alter table users alter column spot_id drop not null;
