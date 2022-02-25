@@ -15,8 +15,9 @@ interface UserRepository {
     suspend fun save(user: User)
 }
 
-class InMemoryUserRepository(
+class PostgresUserRepository(
     private val factory: PostgresqlConnectionFactory,
+    private val json: Json,
 ) : UserRepository {
     override suspend fun all(): List<User> {
         val sql = """
@@ -47,19 +48,18 @@ class InMemoryUserRepository(
                 connection.createStatement(sql)
                     .execute()
                     .flatMap {
-                        it.map { row ->
+                        it.map { row, _ ->
                             val serializer = when (val type = row.get("type", String::class.java)!!) {
                                 "owner" -> Owner.serializer()
                                 "guest" -> Guest.serializer()
                                 else -> throw Error("Unable to deserialize user - type $type")
                             }
 
-                            Json { ignoreUnknownKeys = true }
-                                .decodeFromString(serializer, row.get("result", String::class.java)!!)
+                            json.decodeFromString(serializer, row.get("result", String::class.java)!!)
                         }
                     }
+                    .collectList()
             }
-            .collectList()
             .awaitSingle()
 
         return users
@@ -78,7 +78,7 @@ class InMemoryUserRepository(
                 .bind(1, device.token)
                 .execute()
                 .flatMap {
-                    it.map { row -> row.get(0, Integer::class.java) }
+                    it.map { row, _ -> row.get(0, Integer::class.java) }
                 }
                 .single()
         }
@@ -95,7 +95,7 @@ class InMemoryUserRepository(
                 .bind(1, spot.number.toInt())
                 .execute()
                 .flatMap {
-                    it.map { row -> row.get(0, Integer::class.java) }
+                    it.map { row, _ -> row.get(0, Integer::class.java) }
                 }
                 .map { Optional.of(it) }
                 .single()
@@ -158,22 +158,5 @@ class InMemoryUserRepository(
                 PostgresqlConnection::rollbackTransaction,
             )
             .awaitFirstOrNull()
-
-//        users.find { it.phoneNumber == user.phoneNumber }?.let {
-//            throw Error("User with same phone number exists")
-//        }
-//
-//        if (user is Owner) {
-//            requireNotNull(regions.byId(user.regionId)) { "Invalid region id" }
-//
-//            regions.save(
-//                Spot(
-//                    number = user.parkingNumber,
-//                    regionId = user.regionId
-//                )
-//            )
-//        }
-
-//        users += user
     }
 }
