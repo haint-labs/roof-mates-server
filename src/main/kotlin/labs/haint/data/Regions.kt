@@ -1,11 +1,12 @@
 package labs.haint.data
 
+import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.Serializable
 
 @Serializable
 data class Region(
     val address: String,
-    val spots: List<Spot> = emptyList(),
+    @EncodeDefault val spots: List<Spot> = emptyList(),
     val id: Long = -1,
 )
 
