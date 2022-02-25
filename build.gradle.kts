@@ -40,7 +40,6 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor:1.6.0")
 
-    implementation("org.jooq:jooq:3.16.4")
     implementation("io.r2dbc:r2dbc-postgresql:0.8.10.RELEASE")
 
     testImplementation("io.ktor:ktor-server-test-host:$ktor_version")
