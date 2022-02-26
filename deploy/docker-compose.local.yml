@@ -11,5 +11,6 @@ services:
       - "../src/main/resources/db/migrations:/flyway/sql"
 
   server:
+    env_file: ../.env/.env.local
     volumes:
       - ../build/libs/roof-mates-0.0.1-all.jar:/var/roof-mates-0.0.1-all.jar

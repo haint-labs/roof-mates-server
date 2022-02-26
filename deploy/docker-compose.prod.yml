@@ -9,5 +9,6 @@ services:
       - "/var/www/roof-mates/migrations:/flyway/sql"
 
   server:
+    env_file: /var/www/roof-mates/.env.prod
     volumes:
       - /var/www/roof-mates/roof-mates-0.0.1-all.jar:/var/roof-mates-0.0.1-all.jar
