@@ -6,10 +6,10 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import labs.haint.data.User
-import labs.haint.repo.UserRepository
+import labs.haint.repo.UsersRepository
 
 fun Application.users(
-    repo: UserRepository
+    repo: UsersRepository
 ) = routing {
     route("/users") {
         get {

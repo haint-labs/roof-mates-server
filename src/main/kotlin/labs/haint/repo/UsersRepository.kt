@@ -10,7 +10,7 @@ import labs.haint.data.*
 import reactor.core.publisher.Mono
 import java.util.*
 
-interface UserRepository {
+interface UsersRepository {
     suspend fun all(): List<User>
     suspend fun save(user: User)
 }
@@ -18,7 +18,7 @@ interface UserRepository {
 class PostgresUserRepository(
     private val factory: PostgresqlConnectionFactory,
     private val json: Json,
-) : UserRepository {
+) : UsersRepository {
     override suspend fun all(): List<User> {
         val sql = """
             select 
