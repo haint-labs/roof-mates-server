@@ -129,9 +129,9 @@ class PostgresSpotsRepository(
             "region_id in ($ids)"
         }
 
-        val fromCondition = from?.let { "from_timestamp >= \$${index++}" }
+        val fromCondition = from?.let { "from_timestamp <= \$${index++}" }
 
-        val toCondition = from?.let { "from_timestamp >= \$${index++}" }
+        val toCondition = to?.let { "to_timestamp >= \$${index++}" }
 
         val conditions = arrayOf(regionsCondition, fromCondition, toCondition)
             .filterNotNull()
