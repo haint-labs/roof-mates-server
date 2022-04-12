@@ -6,9 +6,9 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import labs.haint.data.SpotBooking
-import labs.haint.data.SpotsRepository
 import labs.haint.data.SpotRequest
 import labs.haint.data.SpotShare
+import labs.haint.data.SpotsRepository
 
 fun Application.spots(
     repo: SpotsRepository,
@@ -16,9 +16,19 @@ fun Application.spots(
     route("/spots") {
         get {
             // TODO: ktor-locations
-            val regions = call.parameters.getAll("regions")
+            val regions = call.parameters
+                .getAll("regions")
+                ?.mapNotNull { it.toLongOrNull() }
+                ?: run {
+                    call.respond(HttpStatusCode.BadRequest)
+                    return@get
+                }
+
             val from = call.parameters["from"]?.toIntOrNull()
             val to = call.parameters["to"]?.toIntOrNull()
+
+            val spots = repo.findBy(regions, from, to)
+            call.respond(HttpStatusCode.OK, spots)
         }
 
         post("/share") {

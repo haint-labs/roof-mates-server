@@ -45,7 +45,7 @@ interface SpotsRepository {
     // spot share dao
     suspend fun save(share: SpotShare)
     suspend fun delete(share: SpotShare)
-    suspend fun findBy(regions: List<Long>, from: Int, to: Int): List<SpotShare>
+    suspend fun findBy(regions: List<Long>, from: Int?, to: Int?): List<SpotShare>
 
     // spot booking dao
     suspend fun save(booking: SpotBooking)
@@ -116,8 +116,57 @@ class PostgresSpotsRepository(
             .awaitSingle()
     }
 
-    override suspend fun findBy(regions: List<Long>, from: Int, to: Int): List<SpotShare> {
-        TODO("Not yet implemented")
+    override suspend fun findBy(regions: List<Long>, from: Int?, to: Int?): List<SpotShare> {
+        var index = 1
+
+        val regionsCondition = run {
+            if (regions.isEmpty()) return@run null
+
+            val ids = List(regions.size) { index + it }
+                .joinToString(separator = ",") { "\$$it" }
+            index += regions.size
+
+            "region_id in ($ids)"
+        }
+
+        val fromCondition = from?.let { "from_timestamp >= \$${index++}" }
+
+        val toCondition = from?.let { "from_timestamp >= \$${index++}" }
+
+        val conditions = arrayOf(regionsCondition, fromCondition, toCondition)
+            .filterNotNull()
+            .joinToString(prefix = "where ", separator = " and ")
+
+        val sql = """
+            select 
+                spot_shares.id, 
+                spots.id as region_id,
+                spot_shares.spot_id, 
+                spot_shares.user_id,
+                spot_shares.from_timestamp,
+                spot_shares.to_timestamp
+            from 
+                spot_shares
+            left join 
+                spots on spots.id = spot_shares.id
+            $conditions
+        """.trimIndent()
+
+        val params = buildList {
+            addAll(regions)
+            from?.let { add(it) }
+            to?.let { add(it) }
+        }
+
+        return list(sql, params) {
+            SpotShare(
+                spot_id = it("spot_id"),
+                user_id = it("user_id"),
+                from_timestamp = it("from_timestamp"),
+                to_timestamp = it("to_timestamp"),
+                id = it("id"),
+            )
+        }
     }
 
     override suspend fun save(booking: SpotBooking) {
